@@ -1,0 +1,526 @@
+---
+title: "In-Hospital Mortality Prediction"
+author: "Katya Pandey 19BCE1312"
+date: '2022-04-24'
+output: html_document
+---
+
+## 1. Loading the dataset
+
+```{r}
+options(max.print=1000000)
+# Reading the dataset
+df <- read.csv("data01.csv", fileEncoding = "UTF-8", na.strings = "..")
+head(df)
+```
+
+```{r}
+# Parameters affecting patient mortality
+print("Column names present in dataset: ")
+names(df)
+```
+
+```{r}
+# The structure of the data 
+str(df)
+```
+
+```{r}
+# Summary of the dataset
+summary(df)
+```
+
+## 2. Data Pre-processing
+
+#### Data Cleaning
+```{r}
+# Check for null or missing values in the dataset
+sum(is.na(df))
+# Check for null or missing values in each column of the dataset
+print("Column-wise presence of missing data: ")
+colSums(is.na(df))
+```
+
+###### Inference: We have a total of 1929 null values in the dataset.
+
+```{r}
+# Plotting the number of missings for each variable using gg_miss_var() funtion
+#Importing the necessary libraries
+library(naniar)
+gg_miss_var(df)
+```
+
+```{r}
+#PCO2 and PH have many missing values. Analyzing the columns further by creating a linear regression model using lm() function, we’ll get the summary output using the summary() function. 
+summary(lm(PCO2~.,data=df))
+summary(lm(PH~.,data=df))
+```
+
+###### We are not omitting any rows and columns as it we do not want any loss of data.
+
+```{r}
+# Linear Regression Imputation
+# Importing the necessary libraries
+library(simputation)
+df$PCO2<-as.numeric(df$PCO2)
+imp_df <- impute_lm(df[,-c(1,2)],PCO2~as.numeric(outcome)+Platelets+PH)
+imp_df <- impute_lm(imp_df,PH~gendera+temperature+Creatinine+Bicarbonate+PCO2)
+```
+
+###### Some of the values are not taken into account. The linear model does not give an output as one of the predictor variables is missing. 
+
+```{r}
+#Importing the necessary libraries
+library(imputeTS)
+imp_df$outcome<-as.factor(imp_df$outcome)
+imp_df<-na_mean(imp_df[,-c(45,48)])
+```
+
+```{r}
+imp_df$PH<-df$PH
+imp_df$PCO2<-df$PCO2
+```
+
+```{r}
+imp_df <- impute_lm(df[,-c(1,2)],PCO2~as.numeric(outcome)+Platelets+PH)
+imp_df <- impute_lm(imp_df,PH~gendera+temperature+Creatinine+Bicarbonate+PCO2)
+```
+
+```{r}
+imp_df<-na.omit(imp_df)
+# Check for null or missing values in the dataset after imputation
+sum(is.na(imp_df))
+# Plotting the missing dataset values if any
+gg_miss_var(imp_df)
+```
+
+###### As we can see, there are no null values after the data imputation.
+
+```{r}
+normalize <- function(x) {
+    return((x - min(x)) / (max(x) - min(x)))
+}
+imp_df$outcome<-as.numeric(imp_df$outcome)
+imp_df<-apply(imp_df,2,normalize)
+imp_df<-as.data.frame(imp_df)
+```
+
+```{r}
+# Changing data values for better understanding
+#imp_df$outcome[imp_df$outcome == 0] <- "alive"
+#imp_df$outcome[imp_df$outcome == 1] <- "dead"
+head(imp_df)
+str(imp_df)
+```
+
+## 3. Exploratory Data Analysis
+
+```{r}
+#Importing the necessary libraries
+library("ggplot2")
+library("ggpubr")
+theme_set(theme_pubr())
+```
+
+```{r}
+# Importing the necessary packages
+library(funModeling) 
+library(tidyverse) 
+```
+
+```{r}
+# Correlation between mortality outcome and all other parameters
+cor(imp_df$outcome,imp_df$age)
+cor(imp_df$outcome,imp_df$gendera)
+cor(imp_df$outcome,imp_df$BMI)
+cor(imp_df$outcome,imp_df$hypertensive)
+cor(imp_df$outcome,imp_df$atrialfibrillation)
+cor(imp_df$outcome,imp_df$CHD.with.no.MI)
+cor(imp_df$outcome,imp_df$diabetes)
+cor(imp_df$outcome,imp_df$deficiencyanemias)
+cor(imp_df$outcome,imp_df$depression)
+cor(imp_df$outcome,imp_df$Hyperlipemia)
+cor(imp_df$outcome,imp_df$Rel.failure)
+cor(imp_df$outcome,imp_df$heart.rate)
+cor(imp_df$outcome,imp_df$Systolic.blood.pressure)
+cor(imp_df$outcome,imp_df$Diastolic.blood.pressure)
+cor(imp_df$outcome,imp_df$Respiratory.rate)
+cor(imp_df$outcome,imp_df$temperature)
+cor(imp_df$outcome,imp_df$SP.O2)
+cor(imp_df$outcome,imp_df$Urine.output)
+cor(imp_df$outcome,imp_df$hematocrit)
+cor(imp_df$outcome,imp_df$RBC)
+cor(imp_df$outcome,imp_df$MCH)
+cor(imp_df$outcome,imp_df$MCHC)
+cor(imp_df$outcome,imp_df$MCV)
+cor(imp_df$outcome,imp_df$RDW)
+cor(imp_df$outcome,imp_df$Leucocyte)
+cor(imp_df$outcome,imp_df$Platelets)
+cor(imp_df$outcome,imp_df$Neutrophils)
+cor(imp_df$outcome,imp_df$Basophils)
+cor(imp_df$outcome,imp_df$Lymphocyte)
+cor(imp_df$outcome,imp_df$PT)
+cor(imp_df$outcome,imp_df$INR)
+cor(imp_df$outcome,imp_df$NT.proBNP)
+cor(imp_df$outcome,imp_df$Creatine.kise)
+cor(imp_df$outcome,imp_df$Creatinine)
+cor(imp_df$outcome,imp_df$Urea.nitrogen)
+cor(imp_df$outcome,imp_df$glucose)
+cor(imp_df$outcome,imp_df$Blood.potassium)
+cor(imp_df$outcome,imp_df$Blood.sodium)
+cor(imp_df$outcome,imp_df$Blood.calcium)
+cor(imp_df$outcome,imp_df$Chloride)
+cor(imp_df$outcome,imp_df$BMI)
+cor(imp_df$outcome,imp_df$Anion.gap)
+cor(imp_df$outcome,imp_df$Magnesium.ion)
+cor(imp_df$outcome,imp_df$PH)
+cor(imp_df$outcome,imp_df$Bicarbote)
+cor(imp_df$outcome,imp_df$Lactic.acid)
+cor(imp_df$outcome,imp_df$PCO2)
+cor(imp_df$outcome,imp_df$EF)
+```
+#### Maximum correlation is between outcome and BMI.
+
+#### Visualization of patient attributes
+
+###### Count of patients who are alive and dead 
+```{r}
+t <- table(df$outcome)
+t <- as.data.frame(t)
+colnames(t) <- c("aliveness","count")
+ggplot(t, aes(x=aliveness, y=count, fill=aliveness)) +
+geom_bar(stat="identity", color="black") +
+theme_light() +
+geom_text(aes(label=count), vjust=-0.4, size=4) +
+scale_fill_brewer(palette="Set2")
+```
+###### 159 patients died while admitted in the ICU.
+
+#### Visualization of frequencies of all parameters affecting mortality
+
+
+```{r}
+g4 <- table(df$atrialfibrillation)
+g4 <- as.data.frame(g4)
+colnames(g4) <- c("atrialfibrillation","count")
+
+ggplot(g4, aes(x=atrialfibrillation, y=count, fill=atrialfibrillation)) +
+geom_bar(stat="identity", color="black") +
+theme_minimal() +
+geom_text(aes(label=count), vjust=-0.4, size=4) +
+scale_fill_brewer(palette="Set3")
+```
+
+```{r}
+x <- table(df$gendera)
+labels <-  c("male","female")
+piepercent<- round(100*x/sum(x), 1)
+pie(x, labels = piepercent, main = "Age-based distribution",col = rainbow(length(x)))
+legend("topright", c("male","female"), cex = 0.8,
+   fill = rainbow(length(x)))
+```
+#### More number of female patients than male patients.
+
+```{r}
+g3 <- table(df$hypertensive)
+g3 <- as.data.frame(g3)
+colnames(g3) <- c("hypertensive","count")
+
+ggplot(g3, aes(x=hypertensive, y=count, fill=hypertensive)) +
+geom_bar(stat="identity", color="black") +
+theme_minimal() +
+geom_text(aes(label=count), vjust=-0.4, size=4) +
+scale_fill_brewer(palette="Set1")
+```
+
+```{r}
+hist(df$Anion.gap, xlab = "Anion-Gap", ylab = "Count", col = "pink",border = "blue", main="Frequency of Anion Gap in patients")
+```
+
+```{r}
+ggplot(df, aes(x = age, y = RBC)) +
+    geom_point(aes(color = "RBC"))
+```
+
+
+```{r}
+library(plotrix)
+x <- table(df$diabetes)
+labels <-  c("no","yes")
+piepercent<- round(100*x/sum(x), 1)
+pie3D(x,labels = labels, explode = 0.1, main = "Count of patients with Diabetes",col = rainbow(length(x)))
+legend("topright", c("no","yes"), cex = 0.8,
+   fill = rainbow(length(x)))
+```
+```{r}
+ggplot(df, aes(x = age, y = heart.rate)) +
+    geom_point(aes(color = "heart.rate"))
+```
+
+
+```{r}
+ggplot(df, aes(x = age, y = temperature)) +
+    geom_point(aes(color = "temperature"))
+```
+```{r}
+hist(df$BMI, xlab = "BMI",col = "yellow",border = "blue", main="Frequency of BMI values in patients")
+```
+```{r}
+#### Depression-based patient count 
+g1 <- table(df$depression)
+g1 <- as.data.frame(g1)
+colnames(g1) <- c("depression","count")
+ggplot(g1, aes(x=depression, y=count, fill=depression)) +
+geom_bar(stat="identity", color="black") +
+theme_minimal() +
+geom_text(aes(label=count), vjust=-0.4, size=4) +
+scale_fill_brewer(palette="Set1")
+```
+```{r}
+x <- table(df$Rel.failure)
+labels <-  c("no","yes")
+piepercent<- round(100*x/sum(x), 1)
+pie3D(x,labels = labels, explode = 0.1, main = "Count of patients with Renal Failure",col = rainbow(length(x)))
+legend("topright", c("no","yes"), cex = 0.8,
+   fill = rainbow(length(x)))
+```
+
+
+## 4. Implementation of the prediction models
+
+```{r}
+# Importing the necessary libraries
+library(caret)
+library(e1071)
+library(caTools)
+library(kernlab)
+library(stats19)
+library(dplyr)
+library(randomForest)
+```
+
+```{r}
+# Splitting the data into training and testing data
+# Split ratio is taken as 0.75
+sample <- sample.split(imp_df,SplitRatio = 0.75)
+training_data <- subset(imp_df,sample==TRUE)
+testing_data <- subset(imp_df,sample==FALSE)
+```
+
+#### Model 1: Naive Bayes Model
+
+```{r}
+set.seed(234)
+# Training the model
+model <- naiveBayes(outcome~., data=training_data)
+model
+```
+
+```{r}
+# Predicting on test data
+pred <- predict(model, testing_data)
+pred
+```
+
+```{r}
+# Confusion matrix
+cm <- table(testing_data$outcome, pred)
+cm
+```
+
+```{r}
+# Model Evaluation
+confusionMatrix(cm)
+```
+
+## Naive Bayes Accuracy: 91.38%
+
+## Model 2: Logistic Regression
+```{r}
+# Training the model
+logistic_model <- glm(outcome~., 
+                      data = training_data, 
+                      family = "binomial")
+logistic_model
+```
+
+```{r}
+plot(logistic_model)
+```
+
+
+```{r}
+# Summary of the model
+summary(logistic_model)
+```
+
+```{r}
+# Predicting on test data
+predict_reg <- predict(logistic_model, 
+                       testing_data, type = "response")
+predict_reg
+```
+
+```{r}
+# Changing probabilities
+predict_reg <- ifelse(predict_reg >0.5, 1, 0)
+predict_reg
+```
+
+```{r}
+# Evaluating model accuracy using confusion matrix
+cm <- table(testing_data$outcome, predict_reg)
+cm
+```
+
+```{r}
+# Confusion matrix 
+confusionMatrix(cm)
+```
+
+## Logistic Regression accuracy: 87.07%
+
+## Model 3: Support Vector Machine
+```{r}
+set.seed(23) # for reproducibility
+svm <- train(as.factor(outcome) ~ .,
+data = training_data,
+method = "svmRadial",
+trControl = trainControl(method = "cv", number = 5),
+tuneLength = 8
+)
+
+svm
+```
+
+```{r}
+ggplot(svm) + theme_dark()
+```
+
+```{r}
+ctrl <- trainControl(
+method = "cv",
+number = 15,
+classProbs = TRUE,
+summaryFunction = twoClassSummary # also needed for AUC/ROC
+)
+ctrl
+```
+
+```{r}
+training_data$outcome<-as.factor(training_data$outcome)
+levels(training_data$outcome) <- c("alive", "dead") 
+```
+
+```{r}
+# Tune an SVM
+set.seed(23) # for reproducibility
+outcome_svm_auc <- train(
+outcome ~ .,
+data = training_data,
+method = "svmRadial",
+metric = "ROC", # area under ROC curve (AUC)
+trControl = ctrl,
+tuneLength = 15)
+
+outcome_svm_auc
+```
+
+```{r}
+confusionMatrix(outcome_svm_auc)
+```
+```{r}
+# Arranging variables in terms of importance
+prob_alive <- function(object, newdata) {
+predict(object, newdata = newdata, type = "prob")[, "dead"]
+}
+```
+
+
+```{r}
+# Importing necessary libraries
+library(vip)
+set.seed(2827) # for reproducibility
+# Visualizing variables in terms of their importance
+vip(outcome_svm_auc, method = "permute", nsim = 5, train = training_data,
+target = "outcome", metric = "auc", reference_class = "dead",
+pred_wrapper = prob_alive)
+```
+
+```{r}
+pred <- predict(outcome_svm_auc, testing_data)
+pred
+```
+
+```{r}
+testing_data$outcome<-as.factor(testing_data$outcome)
+levels(testing_data$outcome) <- c("alive", "dead")
+confusionMatrix(table(pred,as.factor(testing_data$outcome)))
+```
+## Support Vector Machine Accuracy: 88.79%
+
+## Model-4: Linear Regression
+```{r}
+#imp_df$outcome<-as.numeric(imp_df$outcome)
+mdl <- lm(outcome~., data = training_data)
+mdl$coefficients
+summary(mdl)
+```
+
+```{r}
+plot(mdl)
+```
+
+```{r}
+pred <- predict(mdl, testing_data)
+# Changing probabilities
+pred <- ifelse(pred > 0.5, 1, 0)
+pred
+```
+
+```{r}
+# Evaluating model accuracy using confusion matrix
+cm <- table(testing_data$outcome, pred)
+cm
+```
+
+```{r}
+confusionMatrix(cm)
+```
+## Linear Regression Accuracy: 87.93%
+
+## Model 5: Random Forest
+```{r}
+# imp_df$outcome[imp_df$outcome == 0] <- "alive"
+# imp_df$outcome[imp_df$outcome == 1] <- "dead"
+# Training the model
+rfm <- randomForest(outcome~.,data=training_data, importance=T, proximity=T)
+rfm
+```
+
+```{r}
+plot(rfm)
+```
+
+
+```{r}
+pred <- predict(rfm,testing_data)
+pred <- ifelse(pred >0.5, 1, 0)
+pred
+```
+
+```{r}
+# Evaluating model accuracy using confusion matrix
+cm <- table(testing_data$outcome, pred)
+cm
+```
+```{r}
+confusionMatrix(cm)
+```
+## Random Forest Accuracy: 92.24% 
+
+## Comparative analysis of all the prediction models
+```{r}
+anova(rfm, mdl)
+```
+
